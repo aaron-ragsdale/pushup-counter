@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FORM! — Browser Push-up Counter</title>
+<style>
+:root{font:16px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eef5fc;background:#0c1423}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#203b57,#0c1423 65%)}main{max-width:1120px;margin:0 auto;padding:22px}header{display:flex;align-items:start;justify-content:space-between;gap:16px;margin-bottom:20px}h1{font-size:clamp(26px,4vw,42px);margin:0;letter-spacing:-1px}h1 span{color:#5df0b5}header p{margin:4px 0;color:#abbbce;font-size:14px}.pill{padding:8px 12px;border:1px solid #366e62;background:#14362f;border-radius:25px;color:#7ff0b9;font-size:12px;font-weight:750;white-space:nowrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.stat,.panel{background:#172438;border:1px solid #2d3e54;border-radius:13px;padding:15px}.stat small{display:block;color:#a9bdd0;text-transform:uppercase;font-size:11px;letter-spacing:.06em;font-weight:700}.stat strong{font-size:clamp(24px,3vw,36px);display:block;margin-top:4px;font-variant-numeric:tabular-nums}.stage{position:relative;border-radius:16px;overflow:hidden;background:#111b2a;border:1px solid #30435b;aspect-ratio:16/9}.stage canvas{display:block;width:100%;height:100%}.overlay{position:absolute;inset:0;display:grid;place-items:center;text-align:center;background:linear-gradient(90deg,#091421d9,#09142166,#091421d9);pointer-events:none}.overlay.hidden{display:none}.overlay .msg{max-width:80%;padding:20px}.overlay h2{font-size:clamp(24px,4vw,40px);margin:0 0 8px}.overlay p{color:#dce9f7;line-height:1.5;margin:0}.hud{position:absolute;top:10px;left:10px;background:#0d1826d9;border:1px solid #536578;padding:9px 12px;border-radius:9px;font-size:13px;pointer-events:none}.hud strong{color:#90ffca}.full{position:absolute;right:10px;top:10px;z-index:4}.controls{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0;align-items:center}button,select{border:1px solid #4a5d75;border-radius:9px;padding:10px 14px;background:#2a3c52;color:white;font:inherit}button{font-weight:700;cursor:pointer}button:disabled{opacity:.4;cursor:default}button.primary{background:#64eab2;border-color:#64eab2;color:#0a2a1d}button:hover:enabled{filter:brightness(1.12)}label{color:#bdcee2;font-size:13px}.info{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h3{margin:0 0 8px;font-size:16px}.panel p{font-size:13px;color:#b7c8db;line-height:1.6;margin:6px 0}.panel strong{color:#fff}.panel input[type=range]{width:100%;accent-color:#66eab4}.status{color:#8ff5c5!important;min-height:22px}.small{font-size:12px!important;color:#92a8c1!important}footer{color:#91a7bf;font-size:12px;margin-top:18px;line-height:1.5}.stage:fullscreen{width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0}.stage:fullscreen canvas{height:100%;width:100%;object-fit:contain}@media(max-width:650px){main{padding:12px}.stats{gap:6px}.stat{padding:10px}.stat small{font-size:9px}.stat strong{font-size:24px}.info{grid-template-columns:1fr}.pill{display:none}}
+</style></head><body><main>
+<header><div><h1>FORM<span>!</span></h1><p>Browser-based push-up counter and form feedback</p></div><div class="pill">ON-DEVICE POSE TRACKING</div></header>
+<div class="stats"><div class="stat"><small>Total reps</small><strong id="reps">0</strong></div><div class="stat"><small>Clean · Flagged</small><strong id="flagged">0</strong></div><div class="stat"><small>Movement phase</small><strong id="phase">—</strong></div><div class="stat"><small>Elbow angle</small><strong id="angle">—</strong></div></div>
+<div class="stage" id="stage"><video id="video" autoplay muted playsinline hidden></video><canvas id="canvas" width="960" height="540" aria-label="Live camera, pose and calibrated floor line"></canvas><div class="overlay" id="overlay"><div class="msg"><h2 id="messageTitle">Ready to count?</h2><p id="messageText">Position your camera to your side, around floor height. Keep your head, hands, hips, knees and ankles visible.</p></div></div><div class="hud">Knees: <strong id="kneeStatus">not tracking</strong> · Pose: <strong id="fps">—</strong> FPS</div><button id="fullscreen" class="full">⛶ Full Screen</button></div>
+<div class="controls"><button id="cameraBtn">Enable camera</button><label>Performance <select id="mode"><option value="smooth">Smooth (iPad)</option><option value="standard">Standard (Mac)</option></select></label><label>Processor <select id="processor"><option value="GPU">GPU</option><option value="CPU">CPU</option></select></label><label>View <select id="view"><option value="3d">Diagonal (3D)</option><option value="side">Side-on (2D)</option></select></label><button class="primary" id="startBtn" disabled>Start counting</button><button id="stopBtn" disabled>Stop</button><button id="resetBtn">Reset counts</button><label><input type="checkbox" id="skeleton" checked> Show skeleton</label></div>
+<div class="info"><section class="panel"><h3>Set your floor line</h3><p>Press Start, get into a plank (side-on, or diagonal in 3D view), and the app finds your hands and feet, checks your knees are off the floor, then locks a cyan ground line after a 3-2-1 countdown. The yellow slider line is only a fallback before the lock.</p><label for="floor">Floor position: <strong id="floorValue">85%</strong> down the camera image</label><input id="floor" type="range" min="50" max="98" value="85" step="1"><p class="small">The line is an image-based reference, not a physical floor sensor. It only works well when the floor appears approximately level in the image.</p></section><section class="panel"><h3>Tracking & counting</h3><p id="diagnostics">Turn on your camera to begin.</p><p id="feedback">Go to a straight-arm plank to arm the counter; lower until your elbow bends and push back up.</p><p><label for="depth">Depth target: elbow at or below <strong id="depthValue">100°</strong> at the bottom</label><input id="depth" type="range" min="70" max="130" value="100" step="5"></p><p class="small">Reps that do not reach the depth target still count, but are flagged as shallow.</p><p class="status" id="status" aria-live="polite"></p><p class="small">A rep requires a stable top, meaningful descent and return to your calibrated lockout. Counting pauses only after sustained major hand movement, loss of tracking, or a large camera change; small shifts and brief missed frames are tolerated. Recalibrate to resume. A rep is flagged (not discarded) for knees near the floor, sagging/piked hips, or shallow depth.</p></section></div>
+<footer>Privacy: Video and pose estimation stay in your browser. This app downloads a pretrained MediaPipe model and its runtime on first use; no paid API or video upload. Results are approximate and not a validated exercise or clinical assessment.</footer>
+</main>
+<script type="module">
+import {PoseLandmarker,FilesetResolver} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
+const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
+const MODEL={smooth:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',standard:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task'};
+const W=960,H=540,$=id=>document.getElementById(id),video=$('video'),canvas=$('canvas'),ctx=canvas.getContext('2d');
+let stream,landmarker,ready=false,tracking=[],running=false,delegate='GPU',lastFrame=-1,lastInfer=0,frameInterval=85,fps=0,fpsFrames=0,fpsStart=0;
+let clean=0,flagged=0,phase='READY',wentDown=false,kneeFlagDuringRep=false,lastRepAt=0,lastFeedback='',angleSmooth=null,kneeFrames=0,kneeFlagActive=false,poseLastAt=0,sideIdx=0,topRef=165,downFrames=0,upFrames=0,repMin=180,repFlags=new Set(),badBody=0,mode="idle",stableSince=0,lockAcc=null,locked=null,countStart=0,liveC=null,worldT=[],lastOk=0,zig=null,ext=0,peak=0,zhi=0,zlo=0,lastGoodAt=0;
+function status(s){$('status').textContent=s}function message(title,body,show=true){$('messageTitle').textContent=title;$('messageText').textContent=body;$('overlay').classList.toggle('hidden',!show)}
+function buttons(){$('startBtn').disabled=!ready||!['idle','paused'].includes(mode);$('startBtn').textContent=mode==='paused'?'Recalibrate & resume':'Start counting';$('stopBtn').disabled=mode==='idle';$('cameraBtn').disabled=ready}
+function angle(a,b,c){const ab=[a.x-b.x,a.y-b.y],cb=[c.x-b.x,c.y-b.y],dot=ab[0]*cb[0]+ab[1]*cb[1],mag=Math.hypot(...ab)*Math.hypot(...cb);return mag<.00001?NaN:Math.acos(Math.max(-1,Math.min(1,dot/mag)))*180/Math.PI}
+function visible(p){return p&&p.visibility>.4&&p.x>=-.1&&p.x<=1.1&&p.y>=-.1&&p.y<=1.1}
+const SIDES=[[11,13,15,23,25,27],[12,14,16,24,26,28]];function side(p){const sc=SIDES.map(ix=>ix.reduce((n,i)=>n+(p[i]?.visibility||0),0));if(!['run','countdown'].includes(mode)&&sc[1-sideIdx]>sc[sideIdx]+.8)sideIdx=1-sideIdx;const pts=SIDES[sideIdx].map(i=>p[i]);return pts.filter(visible).length>=4?pts:null}
+function updateStats(){$('reps').textContent=clean+flagged;$('flagged').textContent=clean+' · '+flagged;$('phase').textContent=phase;$('angle').textContent=angleSmooth==null?'—':Math.round(angleSmooth)+'°'}
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const HAND=[[15,17,19],[16,18,20]],FOOT=[[27,29,31],[28,30,32]];
+const flY=(l,x)=>Math.abs(l.fx-l.hx)>.08?l.hy+(l.fy-l.hy)*(x-l.hx)/(l.fx-l.hx):(l.hy+l.fy)/2;
+const lowest=(p,g)=>{const v=g.map(i=>p[i]).filter(c=>c&&c.visibility>.3);return v.length?v.reduce((a,b)=>b.y>a.y?b:a):null};
+// One Euro filter: steadies landmark jitter at rest while staying responsive during fast movement.
+const OE={};
+function oe(k,x,t){const st=OE[k]||(OE[k]={});if(!st.t||t-st.t>1000){st.t=t;st.x=x;st.dx=0;return x}const dt=Math.max(.001,(t-st.t)/1000),al=c=>{const r=6.2832*c*dt;return r/(r+1)};st.dx+=al(1)*((x-st.x)/dt-st.dx);st.x+=al(1.5+8*Math.abs(st.dx))*(x-st.x);st.t=t;return st.x}
+function smoothLm(l,k,t){return l.map((p,i)=>i<11?p:{x:oe(k+i+'x',p.x,t),y:oe(k+i+'y',p.y,t),z:oe(k+i+'z',p.z||0,t),visibility:p.visibility})}
+function angle3(a,b,c){const u=[a.x-b.x,a.y-b.y,a.z-b.z],v=[c.x-b.x,c.y-b.y,c.z-b.z],m=Math.hypot(...u)*Math.hypot(...v);return m<1e-5?NaN:Math.acos(cl((u[0]*v[0]+u[1]*v[1]+u[2]*v[2])/m,-1,1))*180/Math.PI}
+let sceneRef=null,sceneBad=0,sceneCheckAt=0,handRef=[],supportBadAt=0,repStart=0,sideAtLock=0,topHold=0,bottomHold=0;
+// All durations are in milliseconds. Poor visibility gets more grace than sustained, large movement.
+const LOST_POSE_GRACE=1700, LARGE_MOVE_GRACE=1050, BAD_POSTURE_GRACE=1350, CAMERA_GRACE_CHECKS=6;
+let issueSince=0, issueKind='', lastValidPoseAt=0, uncertainSince=0, lockSpan=.6;
+function resetIssues(){issueSince=0;issueKind='';uncertainSince=0}
+function guardIssue(kind,reason,now,grace){
+  if(issueKind!==kind){issueKind=kind;issueSince=now}
+  if(now-issueSince>=grace){pauseCounting(reason);return true}
+  if(['run','countdown'].includes(mode))status('Tracking check: '+reason.toLowerCase()+' (waiting to confirm)');
+  return false;
+}
+const sceneCanvas=document.createElement('canvas');sceneCanvas.width=64;sceneCanvas.height=36;const sceneCtx=sceneCanvas.getContext('2d',{willReadFrequently:true});
+function sceneSample(pts){if(video.readyState<2)return null;sceneCtx.drawImage(video,0,0,64,36);const d=sceneCtx.getImageData(0,0,64,36).data,g=[];for(let i=0;i<d.length;i+=4)g.push(.299*d[i]+.587*d[i+1]+.114*d[i+2]);const p=(pts||[]).filter(visible),xs=p.map(v=>v.x),ys=p.map(v=>v.y),box=p.length?[Math.min(...xs)-.12,Math.max(...xs)+.12,Math.min(...ys)-.15,Math.max(...ys)+.15]:null;const e=[];for(let y=2;y<34;y++)for(let x=2;x<62;x++){const i=y*64+x;if(box&&x/64>box[0]&&x/64<box[1]&&y/36>box[2]&&y/36<box[3])continue;const dx=g[i+1]-g[i-1],dy=g[i+64]-g[i-64];e.push({i,dx,dy})}return {e,g}}
+function lockScene(pts){sceneRef=sceneSample(pts);sceneBad=0;sceneCheckAt=0}
+function sceneMoved(pts,now){if(!sceneRef||now-sceneCheckAt<220)return false;sceneCheckAt=now;const a=sceneSample(pts);if(!a)return false;const avail=new Set(a.e.map(v=>v.i));let diff=0,energy=0,n=0;for(const v of sceneRef.e){if(!avail.has(v.i)||Math.hypot(v.dx,v.dy)<12)continue;const i=v.i,dx=a.g[i+1]-a.g[i-1],dy=a.g[i+64]-a.g[i-64];diff+=Math.hypot(dx-v.dx,dy-v.dy);energy+=Math.hypot(v.dx,v.dy);n++}const bad=n>=35&&diff/Math.max(1,energy)>1.05;sceneBad=bad?sceneBad+1:0;return sceneBad>=CAMERA_GRACE_CHECKS}
+function clearRep(){zig=null;repFlags=new Set();repStart=0;topHold=0;bottomHold=0;ext=0;peak=0}
+function pauseCounting(reason){if(!['run','countdown'].includes(mode))return;running=false;mode='paused';clearRep();phase='PAUSED';locked=null;sceneRef=null;stableSince=0;supportBadAt=0;resetIssues();buttons();updateStats();message('Counting paused',reason+' Select Recalibrate & resume to lock the floor again. Your reps are saved.');status(reason)}
+function supportState(pts){
+  if(!locked||!handRef.length)return 'unknown';
+  // Use the side that was calibrated, not whichever side is most visible this frame.
+  // Compare substantial hand displacement with body size, not single-pixel fluctuations.
+  const aspect=video.videoWidth/video.videoHeight||16/9;
+  const threshold=Math.max(.11,.20*lockSpan); // about 20% of shoulder-to-ankle image span
+  let seen=0,moved=0;
+  for(const r of handRef){
+    const p=pts[r.i];if(!visible(p))continue;
+    seen++;
+    const delta=Math.hypot((p.x-r.x)*aspect,p.y-r.y);
+    if(delta>threshold)moved++;
+  }
+  if(!seen)return 'unknown';
+  return moved?'moved':'ok';
+}
+function tick(){if(mode!=='countdown')return;const left=3-(performance.now()-countStart)/1000;if(left<=0){if(issueSince||performance.now()-lastValidPoseAt>LOST_POSE_GRACE){countStart=performance.now()-2900;message('Starting in 1','Waiting for stable tracking.');return}mode='run';running=true;clearRep();lastFeedback='';message('','',false);buttons();status('Counting. Go!')}else message('Starting in '+Math.ceil(left),'Hold position. Ground line locked.')}
+function analyze(pts,wpts,now){
+  const lost=m=>{if(['run','countdown'].includes(mode))guardIssue('lost',m,now,LOST_POSE_GRACE);if(mode==='setup'&&now-lastOk>400){stableSince=0;message('Get in push-up position',m)}$('kneeStatus').textContent='not tracked';$('diagnostics').textContent=m};
+  if(!pts)return lost('Move farther back and keep your full body in view.');
+  const s=side(pts);if(!s||!s.every(visible))return lost('Keep your shoulder, elbow, wrist, hip, knee and ankle visible.');
+  const ar=video.videoWidth&&video.videoHeight?video.videoWidth/video.videoHeight:16/9,q=p=>({x:p.x*ar,y:p.y});
+  const [shoulder,elbow,wrist,hip,knee,ankle]=s;
+  const w=$('view').value==='3d'&&wpts?SIDES[sideIdx].map(i=>wpts[i]):null;
+  const ang=(i,j,k)=>w?angle3(w[i],w[j],w[k]):angle(q(s[i]),q(s[j]),q(s[k]));
+  const raw=ang(0,1,2);if(!Number.isFinite(raw))return lost('Pose angle temporarily unavailable.');
+  angleSmooth=angleSmooth==null?raw:angleSmooth*.5+raw*.5;
+  const hasLeg=visible(hip)&&visible(knee)&&visible(ankle);
+  const kneeAngle=hasLeg?ang(3,4,5):NaN;
+  const A=q(shoulder),B=hasLeg?q(ankle):null,L=hasLeg?Math.hypot(B.x-A.x,B.y-A.y):NaN;
+  let hipOff=NaN,flat=false;
+  if(hasLeg&&w){const S=[w[0].x,w[0].y,w[0].z],E=[w[5].x,w[5].y,w[5].z],H=[w[3].x,w[3].y,w[3].z],d=E.map((v,i)=>v-S[i]),L3=Math.hypot(...d);
+    if(L3>.2){flat=Math.abs(d[1])<.6*L3;if(flat){const t=H.reduce((n,v,i)=>n+(v-S[i])*d[i],0)/(L3*L3);hipOff=(H[1]-(S[1]+t*d[1]))/L3}}}
+  else if(hasLeg&&L>.1){flat=Math.abs(B.y-A.y)<.6*L;if(flat){const h=q(hip),t=((h.x-A.x)*(B.x-A.x)+(h.y-A.y)*(B.y-A.y))/(L*L);hipOff=(h.y-(A.y+t*(B.y-A.y)))/L}}
+  badBody=Number.isFinite(hipOff)&&Math.abs(hipOff)>.1?Math.min(8,badBody+1):Math.max(0,badBody-1);
+  const bodyFlag=badBody>=4;
+  const hp=lowest(pts,HAND[sideIdx]),fp=lowest(pts,FOOT[sideIdx]);
+  const lv=hp&&fp?{hx:hp.x,hy:hp.y,fx:fp.x,fy:fp.y}:null;liveC=lv&&!locked?{hp,fp}:null;
+  const fl=locked||lv;
+  let clr=NaN;
+  if(visible(knee)&&L>.1)clr=((fl?flY(fl,knee.x):Number($('floor').value)/100)-knee.y)/L;
+  const possibleKnee=Number.isFinite(clr)&&Number.isFinite(kneeAngle)&&kneeAngle<150&&clr<.07;
+  kneeFrames=possibleKnee?Math.min(5,kneeFrames+1):Math.max(0,kneeFrames-1);
+  kneeFlagActive=kneeFrames>=2;
+  $('kneeStatus').textContent=kneeFlagActive?'POSSIBLE CONTACT':clr<.07?'near floor':'clear';
+  $('kneeStatus').style.color=kneeFlagActive?'#ffb786':'#95ffca';
+  if(['run','countdown'].includes(mode)){
+    if(sceneMoved(pts,now)){pauseCounting('Camera or background moved substantially.');return}
+    const handState=supportState(pts);
+    // A fleeting wrong landmark or an ordinary wrist shift must not stop the session.
+    let issue='',why='',grace=LOST_POSE_GRACE;
+    if(handState==='moved'){issue='hand';why='Hand moved well away from its starting position.';grace=LARGE_MOVE_GRACE}
+    else if(handState==='unknown'){issue='lost';why='Hand landmarks temporarily unavailable.'}
+    else if(!flat){issue='posture';why='Push-up body alignment lost.';grace=BAD_POSTURE_GRACE}
+    // Ignore a temporary change in which body side looks more visible.
+    // If evidence is uncertain, do not run the rep counter on that frame.
+    if(issue){guardIssue(issue,why,now,grace);return}
+    resetIssues();lastValidPoseAt=now;
+  }
+  if(mode==='setup'){ stableSince=lastOk&&now-lastOk>250?0:stableSince;
+    let why='';
+    if(!hasLeg)why='Show your whole body.';
+    else if(!hp||!fp)why='Can’t see your '+(!hp&&!fp?'hands and feet':!hp?'hands':'feet')+' yet.';
+    else if(!flat)why='Get into a plank position.';
+    else if(angleSmooth<135)why='Straighten your arms a bit more.';
+    else if(kneeAngle<145)why='Straighten your legs.';
+    else if(!(clr>.02))why='Lift your knees off the floor.';
+    if(why){if(now-lastOk>400){stableSince=0;message('Get in push-up position',why)}}
+    else{
+      lastOk=now;
+      if(!stableSince){stableSince=now;lockAcc={hx:0,hy:0,fx:0,fy:0,n:0}}
+      lockAcc.hx+=hp.x;lockAcc.hy+=hp.y;lockAcc.fx+=fp.x;lockAcc.fy+=fp.y;lockAcc.n++;
+      if(now-stableSince>600){const a=lockAcc,n=a.n;locked={hx:a.hx/n,hy:a.hy/n,fx:a.fx/n,fy:a.fy/n};sideAtLock=sideIdx;handRef=[15,16].filter(i=>visible(pts[i])&&Math.abs(pts[i].y-flY(locked,pts[i].x))<.12).map(i=>({i,x:pts[i].x,y:pts[i].y,floorOffset:Math.abs(pts[i].y-flY(locked,pts[i].x))}));if(!handRef.some(r=>r.i===SIDES[sideIdx][2])){stableSince=0;locked=null;return}topRef=cl(angleSmooth,140,178);lockSpan=L||.6;lockScene(pts);supportBadAt=0;resetIssues();lastValidPoseAt=now;lastGoodAt=now;mode='countdown';countStart=performance.now();status('Ground locked. Get ready…')}
+      else message('Hold still…','Locking hands and feet.');
+    }
+  }
+  const gap=now-lastGoodAt;lastGoodAt=now;
+  if(running){
+    if(gap>LOST_POSE_GRACE)clearRep();
+    const a=angleSmooth,top=Math.max(135,topRef-15);
+    if(!zig){phase='READY';topHold=a>=top?topHold+1:0;if(topHold>=3){zig='up';peak=a;phase='UP'}}
+    else if(zig==='up'){peak=Math.max(peak,a);if(a<peak-20){zig='down';repStart=now;ext=a;bottomHold=0;topHold=0;repFlags=new Set();phase='DOWN'}}
+    else if(zig==='down'||zig==='return'){
+      ext=Math.min(ext,a);if(kneeFlagActive)repFlags.add('knees down');if(bodyFlag)repFlags.add(hipOff>0?'hips sagging':'hips piked');
+      if(peak-a>=35)bottomHold++;else if(zig==='down')bottomHold=0;
+      if(bottomHold>=2&&a>=ext+15){zig='return';phase='UP'}
+      if(a>=top){topHold++;if(topHold>=2){
+        if(zig==='return'&&peak-ext>=35&&now-repStart>=250&&now-lastRepAt>=600){
+          if(ext>Number($('depth').value))repFlags.add('shallow depth');
+          const why=[...repFlags];if(why.length){flagged++;lastFeedback=`Rep ${clean+flagged} flagged: ${why.join(', ')}.`}else{clean++;lastFeedback=`Rep ${clean+flagged}: clean.`}lastRepAt=now;
+        }clearRep();zig='up';peak=a;phase='UP';
+      }}else topHold=0;
+    }
+  }
+  const live=[...repFlags];
+  $('feedback').textContent=((lastFeedback?lastFeedback+' ':'')+(running&&live.length?'Current rep: '+live.join(', ')+'.':''))||'Keep your body in frame and move through a full rep.';
+  $('diagnostics').textContent=`Elbow ${Math.round(angleSmooth)}° · Hips ${Number.isFinite(hipOff)?Math.round(hipOff*100)+'%':'n/a'} · Knee ${Number.isFinite(kneeAngle)?Math.round(kneeAngle)+'°':'n/a'} · knee clearance ${Number.isFinite(clr)?Math.round(clr*100)+'%':'n/a'} · ground ${locked?'locked':lv?'live':'slider'} · ${w?'3D':'2D'} · ${delegate} · ${Math.round(fps*10)/10} FPS`;
+  updateStats();
+}
+function render(){ctx.fillStyle='#101b2a';ctx.fillRect(0,0,W,H);if(video.readyState>=2){ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(video,0,0,W,H);ctx.restore();ctx.fillStyle='#07152235';ctx.fillRect(0,0,W,H)}else{ctx.fillStyle='#c4d5e8';ctx.font='22px system-ui';ctx.textAlign='center';ctx.fillText('Enable camera to see yourself',W/2,H/2)}
+  if(tracking.length&&$('skeleton').checked){const pts=tracking[0];ctx.lineWidth=3;ctx.strokeStyle='#6df9bd';for(const c of PoseLandmarker.POSE_CONNECTIONS){const a=pts[c.start],b=pts[c.end];if(visible(a)&&visible(b)){ctx.beginPath();ctx.moveTo((1-a.x)*W,a.y*H);ctx.lineTo((1-b.x)*W,b.y*H);ctx.stroke()}}for(const i of [11,12,13,14,15,16,19,20,23,24,25,26,27,28,31,32]){const p=pts[i];if(visible(p)){ctx.beginPath();ctx.arc((1-p.x)*W,p.y*H,6,0,Math.PI*2);ctx.fillStyle=[25,26].includes(i)?'#ffbb82':'#89f5fb';ctx.fill()}}}
+  if(locked){const yAt=x=>flY(locked,x);ctx.save();ctx.strokeStyle='#5ee7ff';ctx.lineWidth=3;ctx.setLineDash([14,9]);ctx.beginPath();ctx.moveTo(W,yAt(0)*H);ctx.lineTo(0,yAt(1)*H);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#5ee7ff';for(const [x,y] of [[locked.hx,locked.hy],[locked.fx,locked.fy]]){ctx.beginPath();ctx.arc((1-x)*W,y*H,7,0,7);ctx.fill()}ctx.font='bold 17px system-ui';ctx.textAlign='left';ctx.fillText('GROUND (locked)',12,Math.max(22,Math.min(yAt(0),yAt(1))*H-12));ctx.restore()}
+  else{const y=Number($('floor').value)/100*H;ctx.save();ctx.strokeStyle='#ffdf78';ctx.lineWidth=3;ctx.setLineDash([14,9]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ffdf78';ctx.font='bold 17px system-ui';ctx.textAlign='left';ctx.fillText('FLOOR (slider fallback)',12,Math.max(22,y-12));if(liveC)for(const p of [liveC.hp,liveC.fp]){ctx.beginPath();ctx.arc((1-p.x)*W,p.y*H,6,0,7);ctx.fill()}ctx.restore()}
+}
+function loop(now){if(['run','countdown'].includes(mode)&&poseLastAt&&now-poseLastAt>LOST_POSE_GRACE)guardIssue('lost','Camera frames or pose tracking stopped.',now,LOST_POSE_GRACE);tick();if(ready&&video.readyState>=2&&video.currentTime!==lastFrame&&now-lastInfer>=frameInterval){try{const start=performance.now(),result=landmarker.detectForVideo(video,start);tracking=(result.landmarks||[]).map(l=>smoothLm(l,'i',start));worldT=(result.worldLandmarks||[]).map(l=>smoothLm(l,'w',start));lastInfer=performance.now();lastFrame=video.currentTime;fpsFrames++;if(!fpsStart)fpsStart=lastInfer;if(lastInfer-fpsStart>1100){fps=fpsFrames*1000/(lastInfer-fpsStart);fpsFrames=0;fpsStart=lastInfer}$('fps').textContent=fps.toFixed(1);analyze(tracking[0]||null,worldT[0]||null,lastInfer);poseLastAt=lastInfer}catch(e){status('Pose inference failed: '+e.message)}}render();requestAnimationFrame(loop)}
+$('cameraBtn').onclick=async()=>{const b=$('cameraBtn');b.disabled=true;status('Opening camera and loading pose model…');try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera requires an HTTPS website.');const smooth=$('mode').value==='smooth';frameInterval=smooth?50:20;stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:360},frameRate:{ideal:smooth?24:30},facingMode:'user'},audio:false});video.srcObject=stream;await video.play();const vision=await FilesetResolver.forVisionTasks(WASM);delegate=$('processor').value;try{landmarker=await PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL[$('mode').value],delegate},runningMode:'VIDEO',numPoses:1,minPoseDetectionConfidence:.5,minTrackingConfidence:.5})}catch(err){if(delegate!=='GPU')throw err;delegate='CPU';status('GPU initialization failed; using CPU.');landmarker=await PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL[$('mode').value],delegate},runningMode:'VIDEO',numPoses:1})}ready=true;buttons();message('Camera ready','Check that your full body is visible and align the yellow line with the floor.');status('Camera and pose model ready.')}catch(e){b.disabled=false;status('Setup failed: '+e.message);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}};
+$('startBtn').onclick=()=>{if(!ready)return;mode='setup';running=false;locked=null;stableSince=0;sceneRef=null;handRef=[];supportBadAt=0;resetIssues();lastValidPoseAt=0;lastOk=0;clearRep();phase='SETUP';wentDown=false;zig=null;repFlags=new Set();lastFeedback='';angleSmooth=null;kneeFrames=0;message('Get in push-up position','Arms and legs straight, knees off the floor.');buttons();status('Waiting for a full plank…')};
+$('stopBtn').onclick=()=>{mode='idle';running=false;locked=null;phase='READY';buttons();message('Session stopped',`${clean} clean · ${flagged} flagged reps`);status('Stopped. Your counts remain visible.')};
+$('resetBtn').onclick=()=>{clean=0;flagged=0;phase='READY';wentDown=false;kneeFlagDuringRep=false;repFlags=new Set();downFrames=upFrames=0;zig=null;lastRepAt=0;lastFeedback='';updateStats();status('Counts reset.')};
+$('floor').oninput=()=>{$('floorValue').textContent=$('floor').value+'%'};$('depth').oninput=()=>{$('depthValue').textContent=$('depth').value+'°'};
+$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen()}catch(e){status('Full-screen unavailable: '+e.message)}};
+document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'⛶ Exit Full Screen':'⛶ Full Screen'});
+window.addEventListener('pagehide',()=>stream?.getTracks().forEach(t=>t.stop()));$('mode').value=/iPad|iPhone|iPod|Macintosh.*Mobile/i.test(navigator.userAgent)?'smooth':'standard';updateStats();requestAnimationFrame(loop);
+</script></body></html>
